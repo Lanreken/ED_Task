@@ -1,0 +1,21 @@
+{
+  "name": "@ed-task/task-service",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "publisher": "tsx watch src/workers/outboxPublisher.ts",
+    "publisher:start": "tsx src/workers/outboxPublisher.ts"
+  },
+  "dependencies": {
+    "@ed-task/common": "*",
+    "@ed-task/events": "*",
+    "bullmq": "^5.34.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2",
+    "mongoose": "^8.9.5"
+  }
+}

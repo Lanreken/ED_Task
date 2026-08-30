@@ -1,0 +1,41 @@
+{
+  "name": "ed-task-system",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "libs/*",
+    "services/*"
+  ],
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:monitoring:up": "docker compose up -d loki promtail alertmanager prometheus grafana",
+    "infra:monitoring:down": "docker compose stop grafana prometheus alertmanager promtail loki",
+    "dev:gateway": "npm --workspace @ed-task/api-gateway run dev",
+    "dev:task": "npm --workspace @ed-task/task-service run dev",
+    "dev:task:publisher": "npm --workspace @ed-task/task-service run publisher",
+    "dev:reminder": "npm --workspace @ed-task/reminder-service run dev",
+    "dev:notification": "npm --workspace @ed-task/notification-service run dev",
+    "dev:cloud-sync": "npm --workspace @ed-task/cloud-sync-service run dev",
+    "dev:core": "concurrently \"npm:dev:gateway\" \"npm:dev:task\" \"npm:dev:task:publisher\" \"npm:dev:reminder\" \"npm:dev:notification\"",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bullmq": "^5.34.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.10.5",
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

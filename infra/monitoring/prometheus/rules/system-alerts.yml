@@ -1,0 +1,52 @@
+groups:
+  - name: ed-task-platform-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"api-gateway|task-service|reminder-service|notification-service|ai-service|analytics-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Prometheus cannot scrape {{ $labels.job }} on {{ $labels.instance }} for more than 1 minute."
+
+      - alert: QueueBacklogHigh
+        expr: max_over_time(queue_waiting_jobs[5m]) > 200
+        for: 3m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Queue backlog is high on {{ $labels.service }}"
+          description: "queue_waiting_jobs stayed above 200 for 3 minutes."
+
+      - alert: QueueFailureRateHigh
+        expr: increase(queue_jobs_failed_total[10m]) > 25
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Queue failures rising on {{ $labels.service }}"
+          description: "More than 25 failed jobs in 10 minutes."
+
+      - alert: HttpErrorRateHigh
+        expr: increase(http_request_errors_total[5m]) > 20
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "HTTP errors are high on {{ $labels.service }}"
+          description: "More than 20 HTTP request errors in 5 minutes."
+
+      - alert: NoTaskEventsObserved
+        expr: increase(http_requests_total{job="analytics-service"}[15m]) < 1
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "No analytics activity observed"
+          description: "Analytics service did not process request metrics in the expected window."

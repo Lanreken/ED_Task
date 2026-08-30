@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: api-gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:3000"]
+
+  - job_name: task-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:3002"]
+
+  - job_name: reminder-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:3003"]
+
+  - job_name: notification-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:3004"]
+
+  - job_name: ai-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:3005"]
+
+  - job_name: analytics-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:3006"]
