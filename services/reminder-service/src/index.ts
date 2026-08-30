@@ -1,6 +1,6 @@
-import cors from 'cors';
-import dotenv from 'dotenv';
-import express from 'express';
+import cors from "cors";
+import dotenv from "dotenv";
+import express from "express";
 import {
   connectMongo,
   createErrorHandler,
@@ -11,19 +11,19 @@ import {
   createStandardServiceMetrics,
   getEnv,
   ReconciliationManager,
-} from '../../../libs/common/src/index';
+} from "../../../libs/common/src/index";
 import {
   attachEventSignature,
   EventTypes,
   RedisChannels,
   type EventEnvelope,
-} from '../../../libs/events/src/index';
-import { reminderServiceConfig } from './config';
-import { JobRecordModel } from './models/JobRecord';
-import { ReminderScheduleModel } from './models/ReminderSchedule';
-import { createReminderServiceRouter } from './routes';
-import { startReminderDueWorker } from './workers/reminderDueWorker';
-import { startTaskEventsWorker } from './workers/taskEventsWorker';
+} from "../../../libs/events/src/index";
+import { reminderServiceConfig } from "./config";
+import { JobRecordModel } from "./models/JobRecord";
+import { ReminderScheduleModel } from "./models/ReminderSchedule";
+import { createReminderServiceRouter } from "./routes";
+import { startReminderDueWorker } from "./workers/reminderDueWorker";
+import { startTaskEventsWorker } from "./workers/taskEventsWorker";
 
 dotenv.config();
 
@@ -41,7 +41,7 @@ const reconciliationManager = new ReconciliationManager(logger);
  */
 async function reconcileMissingReminders() {
   const redis = createRedisConnection(
-    getEnv('REDIS_URL', 'redis://localhost:6379'),
+    getEnv("REDIS_URL", "redis://localhost:6379"),
   );
 
   let tasksScanned = 0;
@@ -50,7 +50,7 @@ async function reconcileMissingReminders() {
 
   // Check for scheduled reminders that are overdue but not triggered
   const overdueReminders = await ReminderScheduleModel.find({
-    status: 'scheduled',
+    status: "scheduled",
     runAt: { $lte: new Date() },
   }).limit(50);
 
@@ -59,36 +59,45 @@ async function reconcileMissingReminders() {
   for (const reminder of overdueReminders) {
     try {
       // Update status to triggered and emit event
-      reminder.status = 'triggered';
+      reminder.status = "triggered";
       await reminder.save();
 
-      const reminderEvent: EventEnvelope = attachEventSignature({
-        eventId: `reconciled:${reminder._id}:${Date.now()}`,
-        type: EventTypes.ReminderTriggered,
-        version: 1,
-        source: 'reminder-service',
-        traceId: `reconciliation:${Date.now()}`,
-        occurredAt: new Date().toISOString(),
-        payload: {
-          scheduleId: reminder._id.toString(),
-          taskId: reminder.taskId.toString(),
-          userId: reminder.userId.toString(),
-          title: reminder.title,
-          dueAt: reminder.dueAt.toISOString(),
-          triggeredAt: new Date().toISOString(),
+      const reminderEvent: EventEnvelope = attachEventSignature(
+        {
+          eventId: `reconciled:${reminder._id}:${Date.now()}`,
+          type: EventTypes.ReminderTriggered,
+          version: 1,
+          source: "reminder-service",
+          traceId: `reconciliation:${Date.now()}`,
+          occurredAt: new Date().toISOString(),
+          payload: {
+            scheduleId: reminder._id.toString(),
+            taskId: reminder.taskId.toString(),
+            userId: reminder.userId.toString(),
+            title: reminder.title,
+            dueAt: reminder.dueAt.toISOString(),
+            triggeredAt: new Date().toISOString(),
+          },
         },
-      }, reminderServiceConfig.eventSecurity.sharedSecret);
+        reminderServiceConfig.eventSecurity.sharedSecret,
+      );
 
-      await redis.publish(RedisChannels.ReminderEvents, JSON.stringify(reminderEvent));
+      await redis.publish(
+        RedisChannels.ReminderEvents,
+        JSON.stringify(reminderEvent),
+      );
 
       // Record the job
       await JobRecordModel.findOneAndUpdate(
         { queueJobId: `reminder:${reminder._id.toString()}` },
         {
           $set: {
-            type: 'task_reminder',
-            status: 'triggered',
-            payload: { eventId: reminder.sourceEventId, taskId: reminder.taskId.toString() },
+            type: "task_reminder",
+            status: "triggered",
+            payload: {
+              eventId: reminder.sourceEventId,
+              taskId: reminder.taskId.toString(),
+            },
             attempts: 0,
             runAt: reminder.runAt,
             queueJobId: `reminder:${reminder._id.toString()}`,
@@ -100,12 +109,14 @@ async function reconcileMissingReminders() {
 
       remindersCreated++;
 
-      logger.info('reminder_reconciled', {
+      logger.info("reminder_reconciled", {
         scheduleId: reminder._id,
         taskId: reminder.taskId,
       });
     } catch (error) {
-      errors.push(`Reminder ${reminder._id}: ${error instanceof Error ? error.message : String(error)}`);
+      errors.push(
+        `Reminder ${reminder._id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -118,7 +129,10 @@ async function reconcileMissingReminders() {
 }
 
 async function bootstrap() {
-  await connectMongo(reminderServiceConfig.mongoUri, reminderServiceConfig.serviceName);
+  await connectMongo(
+    reminderServiceConfig.mongoUri,
+    reminderServiceConfig.serviceName,
+  );
 
   startTaskEventsWorker();
   startReminderDueWorker();
@@ -127,19 +141,19 @@ async function bootstrap() {
   reconciliationManager.register(
     createReminderReconciliationJob(reconcileMissingReminders, logger),
   );
-  reconciliationManager.start('reminder_reconciliation');
+  reconciliationManager.start("reminder_reconciliation");
 
   const app = express();
   app.use(cors());
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({ limit: "1mb" }));
   app.use(createReminderServiceRouter());
 
-  app.get('/metrics', (_req, res) => {
-    res.type('text/plain');
+  app.get("/metrics", (_req, res) => {
+    res.type("text/plain");
     res.send(metrics.toPrometheusFormat());
   });
 
-  app.get('/reconciliation', (_req, res) => {
+  app.get("/reconciliation", (_req, res) => {
     res.json({
       jobs: reconciliationManager.getStatus(),
     });
@@ -148,7 +162,7 @@ async function bootstrap() {
   app.use(createErrorHandler(logger));
 
   app.listen(reminderServiceConfig.port, () => {
-    logger.info('service_started', { port: reminderServiceConfig.port });
+    logger.info("service_started", { port: reminderServiceConfig.port });
   });
 }
 
@@ -156,7 +170,7 @@ async function bootstrap() {
 export { reconciliationManager };
 
 bootstrap().catch((error) => {
-  logger.error('service_boot_failed', {
+  logger.error("service_boot_failed", {
     error: error instanceof Error ? error.message : String(error),
   });
   process.exit(1);
